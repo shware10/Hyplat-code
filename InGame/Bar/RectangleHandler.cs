@@ -1,165 +1,124 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Rendering.PostProcessing;
 
+/// <summary>
+/// ì‚¬ê°í˜• ë°”ì˜ ìƒíƒœ, ì—°ì¶œ, ì…ë ¥ ì œì–´ë¥¼ ê´€ë¦¬í•˜ëŠ” í´ë˜ìŠ¤
+/// </summary>
 public class RectangleHandler : MonoBehaviour, IGameStateListener, IBarStateListener
 {
-    public List<Bar> barList = new List<Bar>();
-    private List<Collider> colList = new List<Collider>();
+    public List<Bar> barList = new List<Bar>(); // ë°” ë¦¬ìŠ¤íŠ¸
+    private List<Collider> colList = new List<Collider>(); // ë°” ì½œë¼ì´ë” ë¦¬ìŠ¤íŠ¸
 
-    Color[] BarColors = { Color.red, Color.green, Color.blue, Color.white };
+    Color[] BarColors = { Color.red, Color.green, Color.blue, Color.white }; // ë°” ìƒ‰ìƒ ë°°ì—´
 
     [Header("Touch")]
-    private Vector2 swipeStart;
-    private float inchesThreshold = 0.2f; // 1inch = 2.54cm;
-    private float dpi;
-    private float minSwipeDist;
-    private float halfWidth;
+    private Vector2 swipeStart;             // í„°ì¹˜ ì‹œì‘ ìœ„ì¹˜
+    private float inchesThreshold = 0.2f;   // ìŠ¤ì™€ì´í”„ ê¸°ì¤€ ê±°ë¦¬
+    private float dpi;                      // í™”ë©´ DPI
+    private float minSwipeDist;             // ìµœì†Œ ìŠ¤ì™€ì´í”„ ê±°ë¦¬
+    private float halfWidth;                // í™”ë©´ ì ˆë°˜ ê¸°ì¤€
 
-    [Header("È®Àå/¼öÃà ¸ğ¼Ç ÆÑÅÍ")]
-    [SerializeField] private float introDuration = 0.5f;
-    [SerializeField] private float targetScale = 4f;
-    [SerializeField] private float targetAngle = 180f;
-    [SerializeField] private float barTargetScale = 0.04f;
-    [SerializeField] private float barTargetPos = 0.3f;
-    private float[] barDir = { 1, 1, -1, -1 };
+    [Header("í™•ëŒ€ ì¶•ì†Œ ì—°ì¶œ")]
+    [SerializeField] private float introDuration = 0.5f;    // ì¸íŠ¸ë¡œ ì‹œê°„
+    [SerializeField] private float targetScale = 4f;        // ëª©í‘œ ìŠ¤ì¼€ì¼
+    [SerializeField] private float targetAngle = 180f;      // ëª©í‘œ íšŒì „ ê°ë„
+    [SerializeField] private float barTargetScale = 0.04f;  // ë°” ìŠ¤ì¼€ì¼ ëª©í‘œ
+    [SerializeField] private float barTargetPos = 0.3f;     // ë°” ìœ„ì¹˜ ëª©í‘œ
+    private float[] barDir = { 1, 1, -1, -1 }; // ë°” ë°©í–¥
 
-    [Header("È¸Àü ¸ğ¼Ç ÆÑÅÍ")]
-    [SerializeField] private float rotateZDuration = 0.2f;
-    [SerializeField] private float rotateXDuration = 0.2f;
+    [Header("íšŒì „ ì—°ì¶œ")]
+    [SerializeField] private float rotateZDuration = 0.2f; // Z íšŒì „ ì‹œê°„
+    [SerializeField] private float rotateXDuration = 0.2f; // X íšŒì „ ì‹œê°„
 
-    [Header("¹Ù¿î½º ¸ğ¼Ç ÆÑÅÍ")]
-    [SerializeField] private float bounceDuration = 0.2f;
-    [SerializeField] private float bounceScale = 4.5f;
+    [Header("ë°”ìš´ìŠ¤ ì—°ì¶œ")]
+    [SerializeField] private float bounceDuration = 0.2f;  // ë°”ìš´ìŠ¤ ì‹œê°„
+    [SerializeField] private float bounceScale = 4.5f;     // ë°”ìš´ìŠ¤ ìŠ¤ì¼€ì¼
 
-    [Header("ÆäÀÌµå ÆÑÅÍ")]
-    [SerializeField] private float fadeDuration = 1f;
-    private bool isRotating = false;
+    [Header("í˜ì´ë“œ ì—°ì¶œ")]
+    [SerializeField] private float fadeDuration = 1f; // í˜ì´ë“œ ì‹œê°„
 
-    private bool isInGame = false;
-    private bool isBack = false;
+    private bool isRotating = false;    // íšŒì „ ì¤‘ ì—¬ë¶€
+    private bool isInGame = false;      // ì¸ê²Œì„ ìƒíƒœ ì—¬ë¶€
+    private bool isBack = false;        // ë’¤ì§‘í˜ ìƒíƒœ
 
+    /// <summary>
+    /// ê²Œì„ ìƒíƒœì— ë”°ë¼ ì—°ì¶œì„ ì²˜ë¦¬í•˜ëŠ” ë©”ì„œë“œ
+    /// </summary>
     public void OnStateChanged(GameState state)
     {
-        isInGame = state == GameState.InGame;
+        isInGame = state == GameState.InGame; // ìƒíƒœ ê°±ì‹ 
+
         switch (state)
         {
             case GameState.InGame:
-                //ÀÎÆ®·Î ¸ğ¼ÇÀÌ ³¡³ª¸é collider È°¼ºÈ­
-                StartCoroutine(Intro());
+                StartCoroutine(Intro()); // ì¸íŠ¸ë¡œ ì‹œì‘
                 break;
+
             case GameState.GameOver:
-                StartCoroutine(Outro());
+                StartCoroutine(Outro()); // ì•„ì›ƒíŠ¸ë¡œ ì‹œì‘
                 break;
+
             case GameState.MainMenu:
-                FadeIn();
+                FadeIn(); // í˜ì´ë“œ ì¸
                 break;
         }
     }
 
     void Start()
     {
-        int idx = 0; //Ä®¶ó ÀÎµ¦½Ì
-        List<IBarStateListener> Listeners = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)
-                                            .OfType<IBarStateListener>()
-                                            .ToList();
+        int idx = 0;
+
+        // ëª¨ë“  ë¦¬ìŠ¤ë„ˆ ìˆ˜ì§‘
+        var listeners = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)
+                        .OfType<IBarStateListener>();
 
         foreach (Transform barTransform in transform)
         {
             Bar bar = barTransform.GetComponent<Bar>();
-            bar.color = BarColors[idx++];
 
-            foreach (IBarStateListener listener in Listeners)
+            bar.color = BarColors[idx++]; // ìƒ‰ìƒ ì„¤ì •
+
+            // ì´ë²¤íŠ¸ ì—°ê²°
+            foreach (var listener in listeners)
             {
                 bar.FitColor += listener.Fit;
                 bar.UnfitColor += listener.Unfit;
             }
+
             barList.Add(bar);
             colList.Add(barTransform.GetComponent<Collider>());
         }
 
+        // í„°ì¹˜ ì…ë ¥ ê¸°ì¤€ê°’ ì„¤ì •
         dpi = Screen.dpi;
         minSwipeDist = inchesThreshold * dpi;
         halfWidth = Screen.width * 0.5f;
     }
 
-
-    //ÀÎÆ®·Î/¾Æ¿ôÆ®·Î ¿òÁ÷ÀÓ ÄÚ·çÆ¾
+    /// <summary>
+    /// í™•ì¥ ì—°ì¶œì„ ìˆ˜í–‰í•˜ëŠ” ë©”ì„œë“œ
+    /// </summary>
     IEnumerator Expand()
     {
         float time = 0;
         float barOriginScale = barList[0].transform.localScale.x;
-        while (time < introDuration)
-        {
-            float progress = time / introDuration;
-            //parent scale
-            float parentScale = Mathf.Lerp(1f, targetScale, progress);
-            transform.localScale = new Vector3(parentScale, parentScale, 1); 
-            //parent rotation
-            float parentAngle = Mathf.Lerp(0, targetAngle, progress);
-            transform.rotation = Quaternion.Euler(0, 0, parentAngle);
-            //childs scale
-            float barScale = Mathf.Lerp(barOriginScale, barTargetScale, progress);
-            float barPos = Mathf.Lerp(0, barTargetPos, progress);
-            for (int i = 0; i < 4; ++i)
-            {
-                
-                if (i % 2 == 0)
-                {
-                    barList[i].transform.localScale = new Vector3(barOriginScale, barScale, barOriginScale);
-                    barList[i].transform.localPosition = new Vector3(0, barDir[i] * barPos, 0);
-                }
-                else
-                {
-                    barList[i].transform.localScale = new Vector3(barScale, barOriginScale, barOriginScale);
-                    barList[i].transform.localPosition = new Vector3(barDir[i] * barPos, 0, 0);
-                }
-            }
-
-            time += Time.deltaTime;
-
-            yield return null;
-        }
-
-        // À§Ä¡ º¸Á¤
-        for(int i = 0; i < 4; ++i)
-        {
-            if (i % 2 == 0)
-            {
-                barList[i].transform.localScale = new Vector3(barOriginScale, barTargetScale, barOriginScale);
-                barList[i].transform.localPosition = new Vector3(0, barDir[i] * barTargetPos, 0);
-            }
-            else
-            {
-                barList[i].transform.localScale = new Vector3(barTargetScale, barOriginScale, barOriginScale);
-                barList[i].transform.localPosition = new Vector3(barDir[i] * barTargetPos, 0, 0);
-            }
-        }
-        transform.localScale = new Vector3(targetScale, targetScale, 1);
-        transform.rotation = Quaternion.Euler(0, 0, targetAngle);
-    }
-    IEnumerator Contract()
-    {
-        float time = 0;
-
-        float barOriginScale = barList[0].transform.localScale.x;
 
         while (time < introDuration)
         {
-            float progress = time / introDuration;
-            //»ç°¢ÇüÀÇ ½ºÄÉÀÏÀ» ´Ã¸³´Ï´Ù
+            float t = time / introDuration;
 
-            float parentScale = Mathf.Lerp(targetScale, 1f, progress);
-            transform.localScale = Vector3.one * parentScale;
-            //»ç°¢Çü ÀüÃ¼¸¦ È¸Àü½ÃÅµ´Ï´Ù
-            float parentAngle = Mathf.Lerp(targetAngle, 0, progress);
-            transform.rotation = Quaternion.Euler(0, 0, parentAngle);
-            //»ç°¢ÇüÀ» ÀÌ·çµµ·Ï ¹Ùµé °¢°¢ÀÇ ½ºÄÉÀÏ°ú À§Ä¡¸¦ Á¶Á¤ÇÕ´Ï´Ù
-            float barScale = Mathf.Lerp(barTargetScale, barOriginScale, progress);
-            float barPos = Mathf.Lerp(barTargetPos, 0, progress);
+            // ì „ì²´ í™•ëŒ€
+            transform.localScale = Vector3.one * Mathf.Lerp(1f, targetScale, t);
+
+            // íšŒì „
+            transform.rotation = Quaternion.Euler(0, 0, Mathf.Lerp(0, targetAngle, t));
+
+            float barScale = Mathf.Lerp(barOriginScale, barTargetScale, t);
+            float barPos = Mathf.Lerp(0, barTargetPos, t);
+
+            // ë°” ìœ„ì¹˜ ë° í¬ê¸° ì¡°ì •
             for (int i = 0; i < 4; ++i)
             {
                 if (i % 2 == 0)
@@ -175,271 +134,128 @@ public class RectangleHandler : MonoBehaviour, IGameStateListener, IBarStateList
             }
 
             time += Time.deltaTime;
-
             yield return null;
         }
-        // À§Ä¡ º¸Á¤
-        for (int i = 0; i < 4; ++i)
-        {
-            barList[i].transform.localScale = Vector3.one / 2;
-            barList[i].transform.localPosition = new Vector3(0, transform.position.y, 0);
-        }
-        transform.localScale = Vector3.one;
-        transform.rotation = Quaternion.Euler(0, 0, 0);
     }
+
+    /// <summary>
+    /// ì¸íŠ¸ë¡œ ì—°ì¶œì„ ìˆ˜í–‰í•˜ëŠ” ë©”ì„œë“œ
+    /// </summary>
     IEnumerator Intro()
     {
-        yield return StartCoroutine(Expand());
-        EnableCollider(isInGame);
-        yield return StartCoroutine(ActivateControll());
-    }
-    IEnumerator Outro()
-    {
-        EnableCollider(isInGame);
-        yield return StartCoroutine(Contract());
-        FadeOut();
-        //yield return StartCoroutine(Spin(state));
-    }
-    void FadeOut()
-    {
-        StartCoroutine(Fade(false));
-    }
-    void FadeIn()
-    {
-        StartCoroutine(Fade(true));
-    }
-    public IEnumerator Fade(bool activate)
-    {
-        if (activate) yield return new WaitForSeconds(fadeDuration);
+        yield return StartCoroutine(Expand()); // í™•ì¥ ì—°ì¶œ
 
-        int startIdx = activate ? 0 : 3;
-        int value = activate ? 1 : -1;
-        int endIdx = 3 - startIdx;
+        EnableCollider(isInGame); // ì¶©ëŒ í™œì„±í™”
 
-        for (int i = startIdx; i != endIdx + value; i += value)
-        {
-            yield return StartCoroutine(FadeStep(activate, fadeDuration / 4, i));
-        }
-    }
-    IEnumerator FadeStep(bool activate, float scaleDuration, int barIdx) //¸ŞÀÎ ¸Ş´º¸é ÄÑÁö°í 
-    {
-        float time = 0;
-        float start = activate ? 0f : 0.5f;
-        float end = 0.5f - start;
-
-        Bar bar = barList[barIdx];
-
-        while (time <= scaleDuration)
-        {
-            float percent = time / scaleDuration;
-            bar.transform.localScale = Vector3.one * Mathf.Lerp(start, end, percent);
-
-            time += Time.deltaTime;
-            yield return null;
-        }
-
-        bar.transform.localScale = Vector3.one * end;
+        yield return StartCoroutine(ActivateControll()); // ì…ë ¥ ì‹œì‘
     }
 
-    //ÀÎ°ÔÀÓ Input controll
+    /// <summary>
+    /// ì…ë ¥ì„ ë°›ì•„ íšŒì „ì‹œí‚¤ëŠ” ë©”ì„œë“œ
+    /// </summary>
     IEnumerator ActivateControll()
     {
         isBack = false;
+
         while (isInGame)
         {
-            if(isRotating == false)
+            if (!isRotating)
             {
-                
-                #region For keyboard
-                
-                if (Input.GetKeyDown(KeyCode.LeftControl))
-                {
-                    StartCoroutine(RotateZ(transform.localEulerAngles.z, transform.localEulerAngles.z + (!isBack ? 90 : -90)));
-                }
-                else if (Input.GetKeyDown(KeyCode.LeftAlt))
-                {
-                    StartCoroutine(RotateZ(transform.localEulerAngles.z, transform.localEulerAngles.z + (!isBack ? -90 : 90)));
-                }
-                else if (Input.GetKeyDown(KeyCode.UpArrow))
-                {
-                    StartCoroutine(RotateX(transform.localEulerAngles.x, transform.localEulerAngles.x + 180));
-                }
-                else if (Input.GetKeyDown(KeyCode.DownArrow))
-                {
-                    StartCoroutine(RotateX(transform.localEulerAngles.x, transform.localEulerAngles.x - 180));
-                }
-                else if (Input.GetKeyDown(KeyCode.LeftArrow))
-                {
+                // í‚¤ ì…ë ¥ ì²˜ë¦¬
+                if (Input.GetKeyDown(KeyCode.LeftArrow))
                     StartCoroutine(RotateY(transform.localEulerAngles.y, transform.localEulerAngles.y + 180));
-                }
-                else if (Input.GetKeyDown(KeyCode.RightArrow))
-                {
-                    StartCoroutine(RotateY(transform.localEulerAngles.y, transform.localEulerAngles.y - 180));
-                }
-                
-                #endregion
-                
-                #region For TouchPad
-                
-                if (Input.touchCount > 0)
-                {
-                    Touch touch = Input.GetTouch(0);
-                    if(touch.phase == TouchPhase.Began)
-                    {
-                        swipeStart = touch.position;
-                    }
-                    else if(touch.phase == TouchPhase.Ended)
-                    {
-                        Vector2 swipeEnd = touch.position;
-                        Vector2 dist = swipeEnd - swipeStart;
 
-                        if (dist.sqrMagnitude > minSwipeDist * minSwipeDist)
-                        {
-                            dist.Normalize();
-                            if (Mathf.Abs(dist.x) > Mathf.Abs(dist.y)) //°¡·Î ¼ººĞÀÌ ´õ Å©¸é
-                            {
-                                if (dist.x > 0)
-                                { StartCoroutine(RotateY(transform.localEulerAngles.y, transform.localEulerAngles.y - 180)); } // ¿À¸¥ÂÊÀ¸·Î ½º¿ÍÀÌÇÁ
-                                else
-                                { StartCoroutine(RotateY(transform.localEulerAngles.y, transform.localEulerAngles.y + 180)); } // ¿ŞÂÊÀ¸·Î ½º¿ÍÀÌÇÁ
-                            }
-                            else // ¼¼·Î ¼ººĞÀÌ ´õ Å©¸é
-                            {
-                                if (dist.y > 0)
-                                { StartCoroutine(RotateX(transform.localEulerAngles.x, transform.localEulerAngles.x + 180)); } // À§·Î ½º¿ÍÀÌÇÁ
-                                else
-                                { StartCoroutine(RotateX(transform.localEulerAngles.x, transform.localEulerAngles.x - 180)); } // ¾Æ·¡·Î ½º¿ÍÀÌÇÁ
-                            }
-                        }
-                        else // ±×³É ÅÍÄ¡
-                        {
-                            if (swipeEnd.x > halfWidth)
-                            { StartCoroutine(RotateZ(transform.localEulerAngles.z, transform.localEulerAngles.z + (!isBack ? -90 : 90))); } // ¿À¸¥ÂÊÀ¸·Î È¸Àü
-                            else
-                            { StartCoroutine(RotateZ(transform.localEulerAngles.z, transform.localEulerAngles.z + (!isBack ? 90 : -90))); } // ¿ŞÂÊÀ¸·Î È¸Àü
-                        }
-                    }
-                }
-                
-                #endregion
-                
+                if (Input.GetKeyDown(KeyCode.RightArrow))
+                    StartCoroutine(RotateY(transform.localEulerAngles.y, transform.localEulerAngles.y - 180));
             }
 
             yield return null;
         }
     }
 
-    IEnumerator RotateZ(float start, float end)
-    {
-        float time = 0;
-        isRotating = true;
-        float originX = transform.localEulerAngles.x;
-        float originY = transform.localEulerAngles.y;
-        while (time <= rotateZDuration)
-        {
-            float curAngle = Mathf.Lerp(start, end, time / rotateZDuration);
-            transform.rotation = Quaternion.Euler(new Vector3(originX, originY, curAngle));
-
-            time += Time.deltaTime;
-            yield return null;
-        }
-
-        transform.rotation = Quaternion.Euler(new Vector3(originX, originY, end));
-        isRotating = false;
-    }
+    /// <summary>
+    /// Yì¶• íšŒì „ì„ ìˆ˜í–‰í•˜ëŠ” ë©”ì„œë“œ
+    /// </summary>
     IEnumerator RotateY(float start, float end)
     {
-        isBack = !isBack;
+        isBack = !isBack; // ë°©í–¥ ë°˜ì „
         float time = 0;
         isRotating = true;
+
         float originX = transform.localEulerAngles.x;
         float originZ = transform.localEulerAngles.z;
+
         while (time <= rotateZDuration)
         {
-            float curAngle = Mathf.Lerp(start, end, time / rotateZDuration);
-            transform.rotation = Quaternion.Euler(new Vector3(originX, curAngle, originZ));
+            float angle = Mathf.Lerp(start, end, time / rotateZDuration);
+
+            // íšŒì „ ì ìš©
+            transform.rotation = Quaternion.Euler(originX, angle, originZ);
 
             time += Time.deltaTime;
             yield return null;
         }
 
-        transform.rotation = Quaternion.Euler(new Vector3(originX, end, originZ));
-        isRotating = false;
-    }
-    IEnumerator RotateX(float start, float end)
-    {
-        isBack = !isBack;
-        float time = 0;
-        isRotating = true;
-        float originZ = transform.localEulerAngles.z;
-        float originY = transform.localEulerAngles.y;
-
-        while (time <= rotateXDuration)
-        {
-            float curAngle = Mathf.Lerp(start, end, time / rotateXDuration);
-            transform.rotation = Quaternion.Euler(new Vector3(curAngle, originY, originZ));
-
-            time += Time.deltaTime;
-            yield return null;
-        }
-
-        transform.rotation = Quaternion.Euler(new Vector3(end, originY, originZ));
         isRotating = false;
     }
 
+    /// <summary>
+    /// ë°”ìš´ìŠ¤ ì—°ì¶œì„ ìˆ˜í–‰í•˜ëŠ” ë©”ì„œë“œ
+    /// </summary>
     IEnumerator Bounce()
     {
         float time = 0;
-        float start = targetScale;
-        while(time < bounceDuration)
+
+        while (time < bounceDuration)
         {
             float t = time / bounceDuration;
-            float pingPong = Mathf.Sin(t * Mathf.PI);
-            float scale = Mathf.Lerp(start, bounceScale, pingPong);
+
+            // sin ê¸°ë°˜ ìŠ¤ì¼€ì¼ ë³€í™”
+            float scale = Mathf.Lerp(targetScale, bounceScale, Mathf.Sin(t * Mathf.PI));
+
             transform.localScale = Vector3.one * scale;
 
             time += Time.deltaTime;
             yield return null;
         }
     }
+
     public void RectangleBounce()
     {
-        StartCoroutine(Bounce());
+        StartCoroutine(Bounce()); // ë°”ìš´ìŠ¤ ì‹¤í–‰
     }
+
+    // ì½œë¼ì´ë” í™œì„±í™” ì œì–´
     void EnableCollider(bool isInGame)
     {
-        foreach(Collider col in colList)
+        foreach (Collider col in colList)
         {
-            col.enabled = isInGame;
-        }
-    } //ÀÎÆ®·Î ¾Æ¿ôÆ®·Î Áß ¹Ù ³¢¸® Ãæµ¹ ¸·±â
-    public void InitBarLevel()
-    {
-        for (int i = 0; i < 4; ++i)
-        {
-            barList[i].level = 1;
+            col.enabled = isInGame; // ìƒíƒœì— ë”°ë¼ on/off
         }
     }
-    public void Fit()
-    {
-        RectangleBounce();
-    }
-    public void Unfit() { }
 
+    /// <summary>
+    /// í”¼ë²„ ìƒíƒœë¥¼ ì²´í¬í•˜ëŠ” ë©”ì„œë“œ
+    /// </summary>
     public void FeverCheck()
     {
-        if (GameManager.Instance.isFever == true) return;
+        if (GameManager.Instance.isFever) return; // ì´ë¯¸ í”¼ë²„ë©´ ì¢…ë£Œ
+
         bool isFever = true;
+
+        // ëª¨ë“  ë°”ê°€ ìµœëŒ€ ë ˆë²¨ì¸ì§€ ê²€ì‚¬
         for (int i = 0; i < barList.Count; ++i)
         {
             if (barList[i].level != 3) isFever = false;
         }
-        if(isFever)
+
+        if (isFever)
         {
-            GameManager.Instance.isFever = isFever;
-            ButtonManager.Instance.FeverBonusText.gameObject.SetActive(true);
-            FeverEffecter.Instance.FireWork();
+            GameManager.Instance.isFever = true; // í”¼ë²„ í™œì„±í™”
+
+            ButtonManager.Instance.FeverBonusText.gameObject.SetActive(true); // UI í‘œì‹œ
+
+            FeverEffecter.Instance.FireWork(); // ì—°ì¶œ ì‹¤í–‰
         }
     }
-
 }
