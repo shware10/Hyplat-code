@@ -1,44 +1,111 @@
-**Managers**
+# Hyplat-Code
 
-* **GameManager.cs** : 게임 전체 흐름(상태 전환, 점수/목숨/피버 관리, UI 및 스폰 제어)을 총괄
-* **AudioManager.cs** : 배경음악(BGM)·효과음(SFX) 재생을 관리하며 게임 상태 변화에 따라 자동으로 BGM 제어
-* **FeverEffecter.cs** : 싱글턴으로 관리되는 파티클 효과 실행기, 일정 간격으로 불꽃놀이(Fever) 파티클을 순차 재생
-* **RandomPosGenerator.cs** : 카메라 뷰포트 영역을 분할해 프리팹의 랜덤 위치를 계산·반환
+Unity 기반 캐주얼 액션 게임 프로젝트로, UI 연출, 오브젝트 상호작용, 게임 상태 관리 등을 중심으로 구성된 코드 구조입니다.
 
-**InGame**
+---
 
-* **Bar.cs** : Jet 충돌 시 색상 일치 여부를 판정해 바(Level) 증가·초기화 및 발광 강도/효과음 갱신
-* **RectangleHandler.cs** : 4개의 Bar를 초기화/회전/확장·수축·페이드 처리, 입력(키보드·터치) 제어, Fever 조건 감지
-* **Jet.cs** : 발사체 역할, 색상·방향·속도를 갖고 이동하며 충돌 시 효과 후 풀로 복귀, 상태별 속도 전환
-* **JetPool.cs** : 색상×방향 조합 Jet을 미리 생성해 풀링, 재사용 관리
-* **JetSpawner.cs** : JetPool에서 Jet을 랜덤 스폰, 게임 상태에 따라 자동 스폰 루틴 실행
-* **Net.cs** : Jet 충돌 시 `Net()` 처리 후 효과음 실행, `OnNet` 이벤트 발행
-* **NetHandler.cs** : 씬 내 모든 Net을 수집하고 OnNet 시 생명 차감 및 Bar 초기화 동작을 연결
+## Folder Structure
 
-* **Sticky.cs** : Sticky 기본 클래스, Bar/Net/GameState 이벤트 구독·해제 및 Fit/Unfit 동작 정의
-* **BB.cs** : Sticky 파생 클래스, 인트로/아웃트로 연출과 Wobble 애니메이션, Fit/Unfit 시 애니메이션 트리거
-* **SpawnedSticky.cs** : 플레이 중 랜덤 생성 Sticky, Stick/Unstick 애니메이션과 Fade/회전/스케일 효과, 풀 반환
-* **StickySpawner.cs** : Sticky 풀링 관리, 보너스 확률·랜덤 위치 적용 후 Sticky 스폰
-* **Tail.cs** : 라인렌더러 기반 꼬리 트레일, 목표 방향 따라 부드럽게 이어지고 흔들림 애니메이션 적용
+### Utils
 
-**UI**
+공통적으로 재사용되는 유틸리티
 
-* **UIManager.cs** : 게임 상태별 UI 전환, 점수/루미나 표시, 텍스트 애니메이션(스케일/바운스) 관리
-* **ButtonManager.cs** : 클릭 가능한 텍스트/이미지에 이벤트 연결, 깜빡임·흔들림 효과 부여
-* **BlinkingText.cs** : 지정 텍스트를 일정 간격으로 깜빡이게 하며 필요 시 활성화
-* **CanvasScaler.cs** : 카메라 뷰포트 크기에 맞게 UI 캔버스를 자동 스케일링
-* **ChildsWobbler.cs** : 자식 오브젝트들의 원래 위치 기준 흔들림 애니메이션 적용
-* **BoxHandler.cs** : 자식 오브젝트들을 위아래로 흔들리듯 움직이는 핸들러
-* **ClickableImage.cs** : 이미지에 마우스 이벤트(Enter, Exit, Down, Up, Click) 제공
-* **ClickableText.cs** : 텍스트에 마우스 이벤트(Enter, Exit, Click, Idle) 제공
-* **LifeHandler.cs** : 플레이어 목숨 UI 관리, 초기화 시 모든 라이프 아이콘 활성화
-* **IntroManager.cs** : 인트로 연출(CRT 셰이더 효과, 타이틀 애니메이션, 깜빡이는 텍스트 표시), 입력 시 씬 전환
+* **Singleton<T>** : MonoBehaviour 기반 제네릭 싱글톤 패턴 구현
 
+---
 
-**Interface & Utils**
+### Managers
 
-* **IBarStateListener.cs** : Bar 상태 변화 시 `Fit()`·`Unfit()` 동작 강제하는 인터페이스
-* **IGameStateListener.cs** : 게임 상태 변경 시 `OnStateChanged(GameState state)`를 호출받는 리스너 인터페이스
-* **DebugX.cs** : 로그 메시지에 파일명·라인·메서드명 자동 포함, 디버깅 편의 제공
-* **Singleton.cs** : 제네릭 싱글턴 패턴 구현, 씬 전환 간 파괴되지 않고 하나만 유지되는 MonoBehaviour 베이스
+게임 전반의 상태, 오디오, 이펙트 및 생성 로직 관리
 
+* **GameManager** : 게임 상태, 점수, 생명 및 전체 흐름 관리
+* **AudioManager** : BGM 및 SFX 재생과 상태 기반 오디오 제어
+* **FeverEffecter** : 피버 상태 파티클 연출 처리
+* **RandomPosGenerator** : 화면 영역 기반 랜덤 위치 생성
+
+---
+
+### Interface
+
+게임 상태 및 판정 이벤트 전달 인터페이스
+
+* **IGameStateListener** : 게임 상태 변화 이벤트
+* **IBarStateListener** : 성공/실패(Fit/Unfit) 판정 이벤트
+
+---
+
+### UI
+
+UI 연출 및 인터랙션 처리
+
+* **UIManager** : UI 전환 및 텍스트 연출 관리
+
+* **ButtonManager** : 버튼 인터랙션 및 텍스트 애니메이션 처리
+
+* **ClickableText** : 텍스트 UI 이벤트 처리
+
+* **ClickableImage** : 이미지 UI 이벤트 처리
+
+* **BlinkingText** : 텍스트 깜빡임 연출
+
+* **IntroManager** : 인트로 연출 및 씬 전환
+
+* **BoxHandler** : 자식 오브젝트 흔들림 연출
+
+* **ChildsWobbler** : 자식 오브젝트 sin 기반 흔들림
+
+* **CanvasScaler** : 카메라 기준 Canvas 크기 조정
+
+* **LifeHandler** : 플레이어 체력(UI) 관리
+
+---
+
+### InGame
+
+#### Sticky
+
+스티키 오브젝트 생성 및 연출
+
+* **Sticky** : 스티키 공통 동작 및 이벤트 처리
+
+* **SpawnedSticky** : 생성된 스티키 연출 및 상호작용
+
+* **StickySpawner** : 스티키 풀링 및 생성
+
+* **BB** : 특정 스티키 연출 처리
+
+* **Tail** : 꼬리(LineRenderer) 트레일 생성
+
+#### Net
+
+충돌 기반 이벤트 처리
+
+* **Net** : 충돌 시 이벤트 발생 및 제트 처리
+* **NetHandler** : Net 이벤트를 게임 로직에 연결
+
+#### Jet
+
+제트 오브젝트 생성 및 이동
+
+* **Jet** : 이동, 충돌, 연출 및 상태 관리
+* **JetSpawner** : 제트 생성 및 타이밍 제어
+* **JetPool** : 제트 오브젝트 풀링 관리
+
+#### Bar
+
+바 오브젝트 및 판정 시스템
+
+* **Bar** : 충돌 판정 및 레벨 관리
+* **RectangleHandler** : 바 전체 관리 및 입력/연출 처리
+
+---
+
+## 특징
+
+* 이벤트 기반 구조 (Listener 인터페이스 활용)
+* 상태 기반 게임 흐름 관리 (GameState)
+* 오브젝트 풀링을 활용한 성능 최적화
+* UI와 로직 분리 구조 (Manager / View)
+* 다양한 연출 시스템 (페이드, 바운스, 흔들림, 파티클)
+
+---
